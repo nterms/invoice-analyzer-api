@@ -3,65 +3,52 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreInvoiceRequest;
-use App\Http\Requests\UpdateInvoiceRequest;
+use App\Http\Requests\ImportInvoiceRequest;
 use App\Models\Invoice;
+use App\Services\InvoiceService;
 
 class InvoiceController extends Controller
 {
+    protected $invoiceService;
+
     /**
-     * Display a listing of the resource.
+     * Constructor
+     * 
+     * @param \App\Services\InvoiceService $invoiceService
+     */
+    public function __construct(InvoiceService $invoiceService)
+    {
+        $this->invoiceService = $invoiceService;
+    }
+
+    /**
+     * Returns a list of invoices.
      */
     public function index()
     {
-        //
+        return response($this->invoiceService->getAllInvoices());
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Import invoice files and store data
      */
-    public function create()
+    public function import(ImportInvoiceRequest $request)
     {
-        //
-    }
+        $file = $request->file('file');
+        $invoiceCount = 0;
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreInvoiceRequest $request)
-    {
-        //
-    }
+        try {
+            $invoiceCount = $this->invoiceService->importFromFile($file->getRealPath(), auth()->user());
+        } catch (\Throwable $th) {
+            logger()->error($th->getMessage());
+            logger()->info($th->getTraceAsString());
+            return response([
+                'error' => $th->getMessage(),
+            ], 422);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Invoice $invoice)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Invoice $invoice)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateInvoiceRequest $request, Invoice $invoice)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Invoice $invoice)
-    {
-        //
+        return response([
+            'message' => $invoiceCount > 0 ? $invoiceCount . ' invoices imported.' : 'No invoices found in file uploaded.',
+        ]);
     }
 }
