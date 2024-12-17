@@ -20,7 +20,7 @@ Once the application's Docker containers have started, run database migrations:
 ./vendor/bin/sail artisan migrate
 ```
 
-Open `.env` file and set the QWS account details
+Open `.env` file and set the AWS account details
 
 ```
 AWS_ACCESS_KEY_ID=
