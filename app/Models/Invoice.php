@@ -14,6 +14,6 @@ class Invoice extends Model
         'user_id',
         'invoice_number',
         'total_amount',
-        'invoice_number',
+        'purchase_date',
     ];
 }
