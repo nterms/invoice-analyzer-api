@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\User;
-use App\Traits\Repository;
+use App\Repositories\Traits\Repository;
 use Illuminate\Database\Eloquent\Model;
 
 class UserRepository
