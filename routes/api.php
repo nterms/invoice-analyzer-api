@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\InvoiceItemController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Invoice
     Route::get('/invoices', [InvoiceController::class, 'index']);
     Route::post('/invoices/import', [InvoiceController::class, 'import']);
+    Route::get('/invoice-items/{id}', [InvoiceItemController::class, 'index']);
 });
 
 // Auth

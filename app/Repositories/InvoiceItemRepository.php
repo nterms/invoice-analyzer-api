@@ -24,4 +24,9 @@ class InvoiceItemRepository
     {
         $this->model = $invoiceItem;
     }
+
+    function getAllByInvoice($invoiceId)
+    {
+        return $this->model->where('invoice_id', $invoiceId)->get();
+    }
 }

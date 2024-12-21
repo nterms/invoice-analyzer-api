@@ -15,6 +15,8 @@ class TextractService
     public function getExpenseDocuments(string $filePath)
     {
         try {
+            // throw new \Exception('Test error');
+            // Intialise the TextractClient with AWS credentials from .env
             $client = new TextractClient([
                 'region' => getenv('AWS_DEFAULT_REGION'),
                 'version' => '2018-06-27',
@@ -31,6 +33,7 @@ class TextractService
                 'FeatureTypes' => ['FORMS'], // REQUIRED
             ];
 
+            // Parse file with Textract and get the detected ExpenseDocuments data
             $result = $client->analyzeExpense($options);
             $expenseDocuments = $result->search('ExpenseDocuments');
 

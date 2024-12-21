@@ -6,62 +6,29 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInvoiceItemRequest;
 use App\Http\Requests\UpdateInvoiceItemRequest;
 use App\Models\InvoiceItem;
+use App\Services\InvoiceService;
 
 class InvoiceItemController extends Controller
 {
+    protected $invoiceService;
+
+    /**
+     * Constructor
+     * 
+     * @param \App\Services\InvoiceService $invoiceService
+     */
+    public function __construct(InvoiceService $invoiceService)
+    {
+        $this->invoiceService = $invoiceService;
+    }
+    
     /**
      * Display a listing of the resource.
+     * 
+     * @param int $invoiceId ID of the invoice to list the items
      */
-    public function index()
+    public function index($invoiceId)
     {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreInvoiceItemRequest $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(InvoiceItem $invoiceItem)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(InvoiceItem $invoiceItem)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateInvoiceItemRequest $request, InvoiceItem $invoiceItem)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(InvoiceItem $invoiceItem)
-    {
-        //
+        return response($this->invoiceService->getInvoiceItems($invoiceId));
     }
 }

@@ -6,11 +6,14 @@ use App\Models\User;
 use App\Repositories\InvoiceRepository;
 use App\Repositories\InvoiceItemRepository;
 use App\Services\AWS\TextractService;
+use App\Traits\ParsesData;
 use Carbon\Carbon;
 use Exception;
 
 class InvoiceService
 {
+    use ParsesData;
+
     protected $textractService;
     protected $invoiceRepository;
     protected $invoiceItemRepository;
@@ -37,9 +40,13 @@ class InvoiceService
      */
     public function importFromFile(string $filePath, User $user)
     {
+        // Get invoice details parsed through AWS Textract service
+        // Provided file is parsed to detect the invoice details with 
+        // a confidense level and parsed data returned as ExpenseDocuments
+        // Refer to: https://docs.aws.amazon.com/textract/latest/dg/API_ExpenseDocument.html
         $expenseDocuments = $this->textractService->getExpenseDocuments($filePath);
         $invoiceCount = 0;
-
+        
         if (!empty($expenseDocuments)) {
             foreach ($expenseDocuments as $doc) {
                 $invoiceData = [
@@ -49,29 +56,39 @@ class InvoiceService
                     'purchase_date' => null,
                 ];
 
+                // Examine ExpenseDocument SummaryFields to pick relavant data
+                // Refer to: https://docs.aws.amazon.com/textract/latest/dg/API_ExpenseField.html
                 if (!empty($doc['SummaryFields'])) {
                     foreach ($doc['SummaryFields'] as $field) {
+                        // Check each field data to extract information
+                        // Refer to: https://docs.aws.amazon.com/textract/latest/dg/API_ExpenseDetection.html
+                        // Refer to: https://docs.aws.amazon.com/textract/latest/dg/invoices-receipts.html
                         if (isset($field['Type']['Text'], $field['ValueDetection']['Text'])) {
                             if ($field['Type']['Text'] == 'INVOICE_RECEIPT_ID') {
                                 $invoiceData['invoice_number'] = $field['ValueDetection']['Text'];
                             }
                             if ($field['Type']['Text'] == 'TOTAL') {
-                                $invoiceData['total_amount'] = str_replace([',', ' '], '', $field['ValueDetection']['Text']);
+                                $invoiceData['total_amount'] = $this->getFloatValue($field['ValueDetection']['Text']);
                             }
                             if ($field['Type']['Text'] == 'ORDER_DATE') {
-                                $invoiceData['purchase_date'] = Carbon::parse($field['ValueDetection']['Text']);
+                                $invoiceData['purchase_date'] = Carbon::parse($field['ValueDetection']['Text'])->format('Y-m-d');
                             }
                         }
                     }
                 }
 
+                // Save only if invoice number is available
                 if (!empty($invoiceData['invoice_number'])) {
+                    logger()->info($invoiceData);
                     $invoice = $this->invoiceRepository->create($invoiceData);
                     $invoiceCount++;
                 }
 
+                // In voice can have multiple tables of items which are identified as LineItemGroups
+                // Refer to: https://docs.aws.amazon.com/textract/latest/dg/API_LineItemGroup.html
                 if (isset($invoice) && !empty($doc['LineItemGroups'])) {
                     foreach ($doc['LineItemGroups'] as $itemGroup) {
+                        // A roup has multiple LineItemFields
                         if (!empty($itemGroup['LineItems'])) {
                             foreach ($itemGroup['LineItems'] as $line) {
                                 $invoiceItemData = [
@@ -82,26 +99,28 @@ class InvoiceService
                                     'total_price' => null,
                                 ];
 
+                                // Each LineItem has multiple LineItemExpenseFields
+                                // Refer to: https://docs.aws.amazon.com/textract/latest/dg/API_ExpenseField.html
                                 if (!empty($line['LineItemExpenseFields'])) {
                                     foreach ($line['LineItemExpenseFields'] as $field) {
                                         if (isset($field['Type']['Text'], $field['ValueDetection']['Text'])) {
                                             if ($field['Type']['Text'] == 'ITEM') {
-                                                $invoiceData['item_name'] = $field['ValueDetection']['Text'];
+                                                $invoiceItemData['item_name'] = $field['ValueDetection']['Text'];
                                             }
                                             if ($field['Type']['Text'] == 'QUANTITY') {
-                                                $invoiceData['item_name'] = str_replace([',', ' '], '', $field['ValueDetection']['Text']);
+                                                $invoiceItemData['quantity'] = $this->getFloatValue($field['ValueDetection']['Text']);
                                             }
                                             if ($field['Type']['Text'] == 'UNIT_PRICE') {
-                                                $invoiceData['price_per_unit'] = str_replace([',', ' '], '', $field['ValueDetection']['Text']);
+                                                $invoiceItemData['price_per_unit'] = $this->getFloatValue($field['ValueDetection']['Text']);
                                             }
                                             if ($field['Type']['Text'] == 'PRICE') {
-                                                $invoiceData['total_price'] = str_replace([',', ' '], '', $field['ValueDetection']['Text']);
+                                                $invoiceItemData['total_price'] = $this->getFloatValue($field['ValueDetection']['Text']);
                                             }
                                         }
                                     }
                                 }
-
-                                if (isset($invoiceItemData['item_name'])) {
+                                
+                                if (isset($invoiceItemData['quantity'])) {
                                     $this->invoiceItemRepository->create($invoiceItemData);
                                 }
                             }
@@ -118,5 +137,10 @@ class InvoiceService
 
     public function getAllInvoices() {
         return $this->invoiceRepository->getAll();
+    }
+
+    public function getInvoiceItems($invoiceId)
+    {
+        return $this->invoiceItemRepository->getAllByInvoice($invoiceId);
     }
 }

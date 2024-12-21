@@ -34,16 +34,18 @@ class InvoiceController extends Controller
      */
     public function import(ImportInvoiceRequest $request)
     {
+        // Get the uploaded file (validated at ImportInvoiceRequest)
         $file = $request->file('file');
         $invoiceCount = 0;
 
         try {
+            // Parse the file and insert the detected invoice data to invoice and invoice_items tables
             $invoiceCount = $this->invoiceService->importFromFile($file->getRealPath(), auth()->user());
         } catch (\Throwable $th) {
             logger()->error($th->getMessage());
             logger()->info($th->getTraceAsString());
             return response([
-                'error' => $th->getMessage(),
+                'error' => 'Error importing invoice data.',
             ], 422);
         }
 
